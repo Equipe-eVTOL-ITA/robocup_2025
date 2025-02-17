@@ -8,7 +8,7 @@ endif()
 #find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(fsm REQUIRED)
-find_package(drone_lib REQUIRED)
+find_package(robocup_drone_lib REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -29,7 +29,7 @@ add_executable(fase1
 ament_target_dependencies(fase1
   rclcpp
   fsm
-  drone_lib
+  robocup_drone_lib
   Eigen3
   vision_msgs
 )
@@ -43,7 +43,7 @@ add_executable(fase1_dummy
 ament_target_dependencies(fase1_dummy
   rclcpp
   fsm
-  drone_lib
+  robocup_drone_lib
   Eigen3
   vision_msgs
 )

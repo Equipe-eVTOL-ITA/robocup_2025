@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(drone_lib)
+project(robocup_drone_lib)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -33,11 +33,11 @@ endif()
 include_directories(include)
 
 # define a library target called my_value_converter_library
-add_library(drone_lib SHARED
+add_library(robocup_drone_lib SHARED
   src/Drone.cpp
 )
 
-ament_target_dependencies(drone_lib
+ament_target_dependencies(robocup_drone_lib
   Eigen3
   px4_msgs
   rclcpp
@@ -47,7 +47,7 @@ ament_target_dependencies(drone_lib
   custom_msgs
 )
 
-ament_export_targets(drone_lib HAS_LIBRARY_TARGET)
+ament_export_targets(robocup_drone_lib HAS_LIBRARY_TARGET)
 
 ament_export_dependencies(Eigen3 px4_msgs rclcpp tf2 cv_bridge vision_msgs custom_msgs)
  
@@ -59,8 +59,8 @@ install(
 )
  
 install(
-  TARGETS drone_lib
-  EXPORT drone_lib
+  TARGETS robocup_drone_lib
+  EXPORT robocup_drone_lib
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin

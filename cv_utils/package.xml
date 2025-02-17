@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>robocup_2025_cv_utils</name>
+  <name>robocup_cv_utils</name>
   <version>0.1.0</version>
   <description>Computer vision functions and ROS 2 Nodes for FRTL 2024</description>
 
