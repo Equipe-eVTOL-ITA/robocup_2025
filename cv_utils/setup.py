@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-package_name = 'robocup_2025_cv_utils'
+package_name = 'robocup_cv_utils'
 
 setup(
     name=package_name,
@@ -17,7 +17,8 @@ setup(
         'console_scripts': [
             'yolo_classifier = yolo_classifier.yolo_classifier:main',
             'barcode = barcode_detector.oak_bar:main',
-            'qrcode = qrcode_detector.qrcode_detector:main'
+            'qrcode = qrcode_detector.qrcode_detector:main',
+            'bucket_detector = bucket_detector.bucket_detector:main'
         ],
     }
 )
