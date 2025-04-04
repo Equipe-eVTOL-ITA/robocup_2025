@@ -17,6 +17,7 @@
 #include <custom_msgs/msg/hand_location.hpp>
 #include <custom_msgs/msg/bar_code.hpp>
 #include <custom_msgs/msg/multi_bar_code.hpp>
+#include <custom_msgs/msg/position.hpp>
 #include "std_msgs/msg/string.hpp"
 
 #include <px4_msgs/msg/vehicle_status.hpp>
@@ -193,6 +194,8 @@ public:
 
 	cv_bridge::CvImagePtr& getHorizontalImage();
 	cv_bridge::CvImagePtr& getVerticalImage();
+	cv_bridge::CvImagePtr& getAngledImage();
+
 
 	void create_image_publisher(const std::string& topic_name);
 	void publish_image(const std::string& topic_name, const cv_bridge::CvImagePtr& cv_ptr);
@@ -263,7 +266,11 @@ private:
 
 	rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr vertical_camera_sub_;
 
-	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr classification_sub_;
+	rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr angled_camera_sub_;
+
+	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr vertical_classification_sub_;
+
+	rclcpp::Subscription<vision_msgs::msg::Detection2DArray>::SharedPtr angled_classification_sub_;
 
 	rclcpp::Subscription<custom_msgs::msg::Gesture>::SharedPtr gesture_sub_;
 
@@ -272,6 +279,9 @@ private:
 	rclcpp::Subscription<custom_msgs::msg::MultiBarCode>::SharedPtr bar_code_sub_;
 
 	rclcpp::Subscription<std_msgs::msg::String>::SharedPtr qr_code_sub_;
+
+	rclcpp::Publisher<custom_msgs::msg::Position>::SharedPtr position_pub_;
+	rclcpp::TimerBase::SharedPtr position_timer_;
 
 
 	// Service clients
@@ -296,6 +306,7 @@ private:
 	float airspeed_{0};
 	cv_bridge::CvImagePtr horizontal_cv_ptr_;
 	cv_bridge::CvImagePtr vertical_cv_ptr_;
+	cv_bridge::CvImagePtr angled_cv_ptr_;
 
 	uint8_t target_component_{1};
 	uint8_t source_system_{255};
@@ -312,8 +323,8 @@ private:
 	float pitch_{0};
 	float yaw_{0};
 
-	Eigen::Vector3d frd_home_position_;
-	Eigen::Vector3d ned_home_position_;
+	Eigen::Vector3d frd_home_position_{0};
+	Eigen::Vector3d ned_home_position_{0};
 	float initial_yaw_{0};
 
     Eigen::Vector3d convertPositionNEDtoFRD(const Eigen::Vector3d& position_ned) const;
@@ -321,7 +332,8 @@ private:
     Eigen::Vector3d convertVelocityNEDtoFRD(const Eigen::Vector3d& velocity_ned) const;
     Eigen::Vector3d convertVelocityFRDtoNED(const Eigen::Vector3d& velocity_frd) const;
 
-	std::vector<DronePX4::BoundingBox> detections_{};
+	std::vector<DronePX4::BoundingBox> vertical_detections_{};
+	std::vector<DronePX4::BoundingBox> angled_detections_{};
 	std::vector<Eigen::Vector4d> barcode_detections_ {};
 
 	float bbox_center_x_{0.0};

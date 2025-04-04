@@ -14,12 +14,16 @@ public:
         if (drone == nullptr) return;
         drone->log("STATE: INITIAL TAKEOFF");
 
+        const Eigen::Vector3d fictual_home = Eigen::Vector3d({0.0, 0.0, 0.0});
+
         drone->toOffboardSync();
         drone->armSync();
-        
+        drone->setHomePosition(fictual_home);
+                
         pos = drone->getLocalPosition();
         float target_height = *blackboard.get<float>("takeoff_height");
-        initial_yaw = *blackboard.get<float>("initial_yaw");
+        initial_yaw = drone->getOrientation()[2];
+        drone->log("Initial Yaw: " + std::to_string(initial_yaw));
 
         drone->log("Home at: " + std::to_string(pos[0])
                     + " " + std::to_string(pos[1]) + " " + std::to_string(pos[2]));

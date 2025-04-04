@@ -16,6 +16,7 @@
 #include <custom_msgs/msg/hand_location.hpp>
 #include <custom_msgs/msg/bar_code.hpp>
 #include <custom_msgs/msg/multi_bar_code.hpp>
+#include <custom_msgs/msg/position.hpp>
 #include "std_msgs/msg/string.hpp"
 
 
@@ -277,17 +278,40 @@ Drone::Drone() {
 		}
 	);
 
-	this->classification_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
-		"/vertical_classification",
+	this->angled_camera_sub_ = this->px4_node_->create_subscription<sensor_msgs::msg::Image>(
+		"/angled_camera",
+		qos_profile,
+		[this](sensor_msgs::msg::Image::SharedPtr msg) {
+			angled_cv_ptr_ = cv_bridge::toCvCopy(msg, msg->encoding);
+		}
+	);
+	
+	this->vertical_classification_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
+		"/vertical_camera/classification",
 		qos_profile,
 		[this](vision_msgs::msg::Detection2DArray::SharedPtr msg){
-			detections_.clear();
+			vertical_detections_.clear();
 			for (const auto &detection : msg->detections) {
 				bbox_center_x_ = detection.bbox.center.position.x;
 				bbox_center_y_ = detection.bbox.center.position.y;
 				bbox_size_x_ = detection.bbox.size_x;
 				bbox_size_y_ = detection.bbox.size_y;
-				detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
+				vertical_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
+			}
+		}
+	);
+
+	this->angled_classification_sub_ = this->px4_node_->create_subscription<vision_msgs::msg::Detection2DArray>(
+		"/angled_camera/classification",
+		qos_profile,
+		[this](vision_msgs::msg::Detection2DArray::SharedPtr msg){
+			angled_detections_.clear();
+			for (const auto &detection : msg->detections) {
+				bbox_center_x_ = detection.bbox.center.position.x;
+				bbox_center_y_ = detection.bbox.center.position.y;
+				bbox_size_x_ = detection.bbox.size_x;
+				bbox_size_y_ = detection.bbox.size_y;
+				angled_detections_.push_back({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_});
 			}
 		}
 	);
@@ -323,7 +347,7 @@ Drone::Drone() {
 				float bbox_size_x_ = detection.width;
 				float bbox_size_y_ = detection.height;
 
-				// Store the values in detections_ or process as needed
+				// Store the values in vertical_detections_ or process as needed
 				barcode_detections_.push_back(Eigen::Vector4d({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_}));
 			}
 		}
@@ -335,6 +359,43 @@ Drone::Drone() {
 		[this](std_msgs::msg::String::SharedPtr msg) {
 			this->qr_code_data_ = msg->data;
 	});
+
+	this->position_pub_ = this->px4_node_->create_publisher<custom_msgs::msg::Position>(
+		"/position", qos_profile);
+
+	this->position_timer_ = this->px4_node_->create_wall_timer(
+		std::chrono::milliseconds(20),  // 20 Hz
+		[this]() {
+			custom_msgs::msg::Position msg;
+
+			// NED coordinates
+			msg.x_ned = this->current_pos_x_;
+			msg.y_ned = this->current_pos_y_;
+			msg.z_ned = this->current_pos_z_;
+			msg.yaw_ned = this->yaw_;
+
+			msg.vx_ned = this->current_vel_x_;
+			msg.vy_ned = this->current_vel_y_;
+			msg.vz_ned = this->current_vel_z_;
+
+			// FRD coordinates
+			const Eigen::Vector3d positionNED(this->current_pos_x_, this->current_pos_y_, this->current_pos_z_);
+			const Eigen::Vector3d positionFRD = this->convertPositionNEDtoFRD(positionNED);
+
+			msg.x_frd = positionFRD.x();
+			msg.y_frd = positionFRD.y();
+			msg.z_frd = positionFRD.z();
+			msg.yaw_frd = this->yaw_ - this->initial_yaw_;
+
+			const Eigen::Vector3d velocityNED(this->current_vel_x_, this->current_vel_y_, this->current_vel_z_);
+			const Eigen::Vector3d velocityFRD = this->convertVelocityNEDtoFRD(velocityNED);
+
+			msg.vx_frd = velocityFRD.x();
+			msg.vy_frd = velocityFRD.y();
+			msg.vz_frd = velocityFRD.z();
+
+			this->position_pub_->publish(msg);
+		});
 
 }
 
@@ -402,7 +463,7 @@ Eigen::Vector3d Drone::getOrientation() {
 	return Eigen::Vector3d({
 		this->roll_,
 		this->pitch_,
-		this->yaw_
+		this->yaw_-initial_yaw_
 	});
 }
 
@@ -496,6 +557,7 @@ void Drone::setLocalPosition(float x, float y, float z, float yaw) {
 
 	const Eigen::Vector3d positionFRD(x, y, z);
 	const Eigen::Vector3d positionNED = this->convertPositionFRDtoNED(positionFRD);
+	yaw += initial_yaw_;
 
 	msg.position[0] = positionNED.x();
 	msg.position[1] = positionNED.y();
@@ -652,17 +714,7 @@ void Drone::setHomePosition(const Eigen::Vector3d& fictual_home) {
 	this->frd_home_position_ = fictual_home;
 	this->ned_home_position_ = Eigen::Vector3d({current_pos_x_, current_pos_y_, current_pos_z_});
 	this->initial_yaw_ = yaw_;
-
-	this->sendCommand(
-		px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_HOME,
-		this->target_system_,
-		this->target_component_,
-		this->source_system_,
-		this->source_component_,
-		this->confirmation_,
-		this->from_external_,
-		1.0f
-	);
+	this->log("INITIAL YAW IS: " + std::to_string(yaw_));
 }
 
 void Drone::sendCommand(
@@ -728,7 +780,10 @@ cv_bridge::CvImagePtr& Drone::getHorizontalImage() {
 
 cv_bridge::CvImagePtr& Drone::getVerticalImage() {
 	return vertical_cv_ptr_;
+}
 
+cv_bridge::CvImagePtr& Drone::getAngledImage() {
+	return angled_cv_ptr_;
 }
 
 void Drone::create_image_publisher(const std::string& topic_name) {
@@ -768,7 +823,7 @@ std::unordered_map<std::string, std::string> Drone::encoding_map_ = {
 };
 
 std::vector<DronePX4::BoundingBox> Drone::getBoundingBox(){
-	return detections_;
+	return vertical_detections_;
 }
 
 std::vector<Eigen::Vector4d> Drone::getBarCodeLocation() {

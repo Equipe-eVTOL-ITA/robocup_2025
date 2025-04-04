@@ -45,8 +45,10 @@ class YoloClassifierNode(Node):
         )
 
         # Set dynamic topic names based on the model name
-        classification_topic = '/vertical_classification'
-        image_topic = f'/{model_name}/image/compressed'
+        # Extract the first string after '/' and before the second '/'
+        camera_name = self.image_topic.split('/')[1] if len(self.image_topic.split('/')) > 1 else ''
+        classification_topic = f'/{camera_name}/classification'
+        image_topic = f'/{camera_name}/{model_name}/image/compressed'
 
         self.classification_publisher_ = self.create_publisher(Detection2DArray, classification_topic, 10)
         self.image_publisher_ = self.create_publisher(CompressedImage, image_topic, 10)
