@@ -16,15 +16,15 @@ public:
     PositionFSM() : fsm::FSM({"ERROR", "FINISHED"}) {
 
         this->blackboard_set<Drone>("drone", new Drone());
-        Drone* drone = blackboard_get<Drone>("drone");
-
         
+        //Drone* drone = blackboard_get<Drone>("drone");
         // const Eigen::Vector3d fictual_home = Eigen::Vector3d({0.0, 0.0, 0.0});
         // drone->setHomePosition(fictual_home);
         // const Eigen::Vector3d home_pos = drone->getLocalPosition(); 
         // this->blackboard_set<Eigen::Vector3d>("home_position", home_pos);
 
-        this->blackboard_set<bool>("finished_bases", false); 
+        this->blackboard_set<int>("num_rotations", 0);
+        this->blackboard_set<int>("waypoints_visited", 0);
 
         // ARENA POINTS
         std::vector<ArenaPoint> waypoints;

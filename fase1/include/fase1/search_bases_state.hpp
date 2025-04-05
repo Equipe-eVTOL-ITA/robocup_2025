@@ -113,7 +113,6 @@ private:
                 return &point;
             }
         }
-        
         // Return nullptr if no unvisited points are found
         return nullptr;
     }

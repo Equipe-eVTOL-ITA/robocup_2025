@@ -37,9 +37,8 @@ public:
         (void) blackboard;
         pos = drone->getLocalPosition();
 
-        drone->log("Offboard and arming.");
-        drone->toOffboardSync();
-        drone->armSync();    
+        drone->log("Disarming.");
+        drone_->disarmSync();
     }
 
 private:
