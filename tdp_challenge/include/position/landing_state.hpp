@@ -38,7 +38,7 @@ public:
         pos = drone->getLocalPosition();
 
         drone->log("Disarming.");
-        drone_->disarmSync();
+        drone->disarmSync();
     }
 
 private:
