@@ -2,6 +2,7 @@
 #include <opencv2/highgui.hpp>
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
+#include "ArenaPoint.hpp"
 
 class InitialTakeoffState : public fsm::State {
 public:

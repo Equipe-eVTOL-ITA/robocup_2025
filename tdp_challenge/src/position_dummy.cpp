@@ -1,10 +1,11 @@
-#include "position/initial_takeoff_state.hpp"
-#include "position/landing_state.hpp"
-#include "position/precision_align_state.hpp"
-#include "position/rotate_state.hpp"
-#include "position/goto_position_state.hpp"
-#include "position/Movement.hpp"
+#include "position_dummy/initial_takeoff_state.hpp"
+#include "position_dummy/landing_state.hpp"
+#include "position_dummy/precision_align_state.hpp"
+#include "position_dummy/rotate_state.hpp"
+#include "position_dummy/goto_position_state.hpp"
+#include "position_dummy/ArenaPoint.hpp"
 #include <rclcpp/rclcpp.hpp>
+
 
 #include <memory>
 #include <iostream>
@@ -15,24 +16,27 @@ public:
     PositionFSM() : fsm::FSM({"ERROR", "FINISHED"}) {
 
         this->blackboard_set<Drone>("drone", new Drone());
+        
+        //Drone* drone = blackboard_get<Drone>("drone");
+        // const Eigen::Vector3d fictual_home = Eigen::Vector3d({0.0, 0.0, 0.0});
+        // drone->setHomePosition(fictual_home);
+        // const Eigen::Vector3d home_pos = drone->getLocalPosition(); 
+        // this->blackboard_set<Eigen::Vector3d>("home_position", home_pos);
 
-        // MOVEMENTS
-        std::vector<Movement> movements;
+        this->blackboard_set<int>("num_rotations", 0);
+        this->blackboard_set<int>("waypoints_visited", 0);
+
+        // ARENA POINTS
+        std::vector<ArenaPoint> waypoints;
         float distance_s = 3.0;
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({distance_s, 0.0, -distance_s})));
-        movements.push_back(Movement("Rotate", 360, -1));
-        movements.push_back(Movement("Rotate", 360, 1));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({distance_s, 0.0, -2*distance_s})));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({distance_s, 0.0, -distance_s})));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({2*distance_s, 0.0, -distance_s})));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({distance_s, 0.0, -distance_s})));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({2*distance_s, 0.0, -distance_s})));
-        movements.push_back(Movement("Rotate", 180, 1));
-        movements.push_back(Movement("GoTo", Eigen::Vector3d({0.0, 0.0, -distance_s})));
-        movements.push_back(Movement("Rotate", 180, -1));
-        movements.push_back(Movement("Finished"));
-
-        this->blackboard_set<std::vector<Movement>>("movements", movements);
+        waypoints.push_back({Eigen::Vector3d({distance_s, 0.0, -distance_s})});
+        waypoints.push_back({Eigen::Vector3d({distance_s, 0.0, -2*distance_s})});
+        waypoints.push_back({Eigen::Vector3d({distance_s, 0.0, -distance_s})});
+        waypoints.push_back({Eigen::Vector3d({2*distance_s, 0.0, -distance_s})});
+        waypoints.push_back({Eigen::Vector3d({distance_s, 0.0, -distance_s})});
+        waypoints.push_back({Eigen::Vector3d({2*distance_s, 0.0, -distance_s})});
+        waypoints.push_back({Eigen::Vector3d({0.0, 0.0, -distance_s})});
+        this->blackboard_set<std::vector<ArenaPoint>>("waypoints", waypoints);
         this->blackboard_set<float>("takeoff_height", -distance_s);
 
 
@@ -51,13 +55,13 @@ public:
         // Precision Align transitions
         this->add_transitions("PRECISION ALIGN", {
                                                     {"ROTATE NOW", "ROTATE"},
-                                                    {"GOTO NOW", "GO TO POSITION"},
-                                                    {"FINISHED CHALLENGE", "LANDING"},
+                                                    {"NEXT BUCKET", "GO TO POSITION"},
                                                     {"SEG FAULT", "ERROR"}});
 
         // Rotate transitions
         this->add_transitions("ROTATE", {
-                                            {"FINISHED ROTATION", "PRECISION ALIGN"},
+                                            {"FINISHED ROTATION", "GO TO POSITION"},
+                                            {"FINISHED CHALLENGE", "LANDING"},
                                             {"SEG FAULT", "ERROR"}});
 
         // Landing transitions

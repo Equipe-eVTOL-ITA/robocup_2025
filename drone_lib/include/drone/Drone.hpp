@@ -205,7 +205,8 @@ public:
 	std::array<float, 2> getHandLocation();
 	void resetHands();
 
-	std::vector<DronePX4::BoundingBox> getBoundingBox();
+	std::vector<DronePX4::BoundingBox> getVerticalBboxes();
+	std::vector<DronePX4::BoundingBox> getAngledBboxes();
 
 	std::vector<Eigen::Vector4d> getBarCodeLocation();
 

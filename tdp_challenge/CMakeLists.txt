@@ -19,6 +19,7 @@ include_directories(include)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+#position
 
 add_executable(position
   src/position.cpp
@@ -34,6 +35,25 @@ ament_target_dependencies(position
 
 target_link_libraries(position ${OpenCV_LIBS})
 
+
+#position_dummy
+
+add_executable(position_dummy
+  src/position_dummy.cpp
+)
+
+ament_target_dependencies(position_dummy
+  rclcpp
+  fsm
+  robocup_drone_lib
+  Eigen3
+  vision_msgs
+)
+
+target_link_libraries(position ${OpenCV_LIBS})
+
+#transverse
+
 add_executable(transverse
   src/transverse.cpp
 )
@@ -48,12 +68,19 @@ ament_target_dependencies(transverse
 
 target_link_libraries(transverse ${OpenCV_LIBS})
 
+#Install
 
 install(
   TARGETS
     position
+    position_dummy
     transverse
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install launch files
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)

@@ -114,7 +114,7 @@ class YoloClassifierNode(Node):
         # Convert the modified frame back to an Image message
         try:
             annotated_msg = self.bridge.cv2_to_compressed_imgmsg(current_frame)
-            self.get_logger().info("Publishing annotated image.")
+            #self.get_logger().info("Publishing annotated image.")
             self.image_publisher_.publish(annotated_msg)
         except CvBridgeError as e:
             self.get_logger().error(f"Failed to convert annotated image: {str(e)}")

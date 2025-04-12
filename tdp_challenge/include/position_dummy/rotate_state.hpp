@@ -2,6 +2,7 @@
 #include <opencv2/highgui.hpp>
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
+#include "ArenaPoint.hpp"
 #include <chrono>
 #include <thread>
 #include <cmath>
@@ -16,11 +17,24 @@ public:
         if (!drone) return;
         drone->log("STATE: RotateState");
 
+        // Get rotation mode from blackboard
+        num_rotations = *blackboard.get<int>("num_rotations");
+
         angular_velocity = 0.2; // rad/s
 
-        movement = getNextMovement(blackboard.get<std::vector<Movement>>("movements"));
-        double total_angle = movement->getTotalAngle();
-        rotation_direction = movement->getRotationDirection();
+        if (num_rotations == 0) {
+            total_angle = 2 * M_PI;   // 360 degrees
+            rotation_direction = -1;   // Left
+            finish_message = "FINISHED ROTATION";
+        } else if (num_rotations == 1) {
+            total_angle = M_PI;       // 180 degrees
+            rotation_direction = 1;  // Right
+            finish_message = "FINISHED ROTATION";
+        } else if (num_rotations == 2) {
+            total_angle = M_PI;       // 180 degrees
+            rotation_direction = -1;   // Left
+            finish_message = "FINISHED CHALLENGE";
+        }
 
         drone->log("Rotating " + std::to_string(rotation_direction * total_angle * 180 / M_PI) + " degrees.");
 
@@ -35,8 +49,19 @@ public:
         double elapsed_time = std::chrono::duration_cast<std::chrono::duration<double>>(now - start_time).count();
 
         if (elapsed_time >= rotation_time) {
+            // Stop rotating
+            drone->setLocalVelocity(0, 0, 0, 0);
+
+            // Inverter direcao de rotacao do 360
+            if (num_rotations == 0 && rotation_direction == -1) {
+                rotation_direction = 1; // Right
+                drone->log("Rotating 360 degrees in the opposite direction.");
+                start_time = std::chrono::steady_clock::now();
+                captureAndSaveImages();
+                return "";
+            }
             captureAndSaveImages();
-            return "FINISHED ROTATION";
+            return finish_message;
         }
 
         drone->setLocalVelocity(0, 0, 0, rotation_direction * angular_velocity);
@@ -45,16 +70,18 @@ public:
     }
 
     void on_exit(fsm::Blackboard &blackboard) override {
-        (void) blackboard;
-        movement->setFinished();
+        num_rotations++;
+        blackboard.set<int>("num_rotations", num_rotations);
     }
 
 private:
     Drone* drone;
-    double total_angle, rotation_time, angular_velocity;
+    int num_rotations;
+    double total_angle;
+    double rotation_time, angular_velocity;
     int rotation_direction;
+    std::string finish_message;
     std::chrono::steady_clock::time_point start_time;
-    Movement *movement;
 
     void captureAndSaveImages() {
         auto angledImg = drone->getAngledImage();

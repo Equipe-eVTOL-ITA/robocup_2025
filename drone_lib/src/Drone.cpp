@@ -347,7 +347,7 @@ Drone::Drone() {
 				float bbox_size_x_ = detection.width;
 				float bbox_size_y_ = detection.height;
 
-				// Store the values in vertical_detections_ or process as needed
+				// Store the values in barcode_detections_ or process as needed
 				barcode_detections_.push_back(Eigen::Vector4d({bbox_center_x_, bbox_center_y_, bbox_size_x_, bbox_size_y_}));
 			}
 		}
@@ -822,8 +822,12 @@ std::unordered_map<std::string, std::string> Drone::encoding_map_ = {
 	{"CV_32FC3", "32FC3"}	
 };
 
-std::vector<DronePX4::BoundingBox> Drone::getBoundingBox(){
+std::vector<DronePX4::BoundingBox> Drone::getVerticalBboxes(){
 	return vertical_detections_;
+}
+
+std::vector<DronePX4::BoundingBox> Drone::getAngledBboxes(){
+	return angled_detections_;
 }
 
 std::vector<Eigen::Vector4d> Drone::getBarCodeLocation() {

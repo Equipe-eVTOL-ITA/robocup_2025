@@ -2,59 +2,64 @@
 #include <opencv2/highgui.hpp>
 #include "fsm/fsm.hpp"
 #include "drone/Drone.hpp"
+#include "ArenaPoint.hpp"
 #include <chrono>
 #include <thread>
-#include <cmath>
+#include <filesystem>
+#include <ctime>
 
-class RotateState : public fsm::State {
+class PrecisionAlignState : public fsm::State {
 public:
-    RotateState(): fsm::State() {}
+    PrecisionAlignState() : fsm::State(), drone(nullptr) {}
 
     void on_enter(fsm::Blackboard &blackboard) override {
-        
         drone = blackboard.get<Drone>("drone");
-        if (!drone) return;
-        drone->log("STATE: RotateState");
+        if (!drone)
+            return;
+        drone->log("STATE: PrecisionAlignState");
 
-        angular_velocity = 0.2; // rad/s
+        yaw = drone->getOrientation()[2];
 
-        movement = getNextMovement(blackboard.get<std::vector<Movement>>("movements"));
-        double total_angle = movement->getTotalAngle();
-        rotation_direction = movement->getRotationDirection();
-
-        drone->log("Rotating " + std::to_string(rotation_direction * total_angle * 180 / M_PI) + " degrees.");
-
-        rotation_time = total_angle / angular_velocity;
-        start_time = std::chrono::steady_clock::now();
+        int waypoints_visited = *blackboard.get<int>("waypoints_visited");
+        next_action = ((waypoints_visited == 1 || waypoints_visited == 6 || waypoints_visited == 7)
+                       ? "ROTATE NOW"
+                       : "NEXT BUCKET");
     }
 
     std::string act(fsm::Blackboard &blackboard) override {
         (void)blackboard;
+        pos = drone->getLocalPosition();
 
-        auto now = std::chrono::steady_clock::now();
-        double elapsed_time = std::chrono::duration_cast<std::chrono::duration<double>>(now - start_time).count();
 
-        if (elapsed_time >= rotation_time) {
-            captureAndSaveImages();
-            return "FINISHED ROTATION";
+        if (!aligned){
+            // Align the drone to the target position.
+            aligned = true;
+            drone->log("Aligning to target position.");
+            start_time = std::chrono::steady_clock::now();
         }
 
-        drone->setLocalVelocity(0, 0, 0, rotation_direction * angular_velocity);
+        else{
+            auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - start_time).count();
 
+            if (elapsed_time > 1) {
+                captureAndSaveImages();
+                drone->log("Images captured and saved.");
+                return next_action;
+            }
+        }
+
+        drone->setLocalPosition(pos[0], pos[1], pos[2], yaw);
         return "";
     }
 
-    void on_exit(fsm::Blackboard &blackboard) override {
-        (void) blackboard;
-        movement->setFinished();
-    }
-
 private:
+    Eigen::Vector3d pos;
     Drone* drone;
-    double total_angle, rotation_time, angular_velocity;
-    int rotation_direction;
+    std::string next_action;
+    bool aligned = false;
     std::chrono::steady_clock::time_point start_time;
-    Movement *movement;
+    float yaw;
 
     void captureAndSaveImages() {
         auto angledImg = drone->getAngledImage();
@@ -74,5 +79,6 @@ private:
         std::string verticalFilename = std::string("bucket_detections/vertical_") + timestamp + ".png";
         cv::imwrite(angledFilename, angledImg->image);
         cv::imwrite(verticalFilename, verticalImg->image);
+
     }
 };
